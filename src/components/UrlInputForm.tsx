@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Globe, Settings, Database, Cpu } from 'lucide-react';
+import { Globe, Settings, Database, Cpu, Download, Image, FileText } from 'lucide-react';
 
 interface UrlInputFormProps {
   onSubmit: (url: string, options: any) => void;
@@ -21,6 +21,9 @@ export default function UrlInputForm({ onSubmit, isLoading }: UrlInputFormProps)
     respectRobotsTxt: true,
     delay: 500,
     exportFormat: 'json',
+    downloadImages: true,
+    downloadFiles: true,
+    maxFileSize: 50
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -171,6 +174,61 @@ export default function UrlInputForm({ onSubmit, isLoading }: UrlInputFormProps)
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="border-b pb-4 mb-4">
+              <h3 className="font-medium text-lg mb-2 flex items-center">
+                <Download className="mr-2" size={18} />
+                File Download Options
+              </h3>
+              
+              <div className="flex items-center mb-3">
+                <input
+                  type="checkbox"
+                  id="downloadImages"
+                  name="downloadImages"
+                  checked={options.downloadImages}
+                  onChange={handleOptionChange}
+                  className="h-4 w-4 mr-2"
+                />
+                <label htmlFor="downloadImages" className="text-sm flex items-center">
+                  <Image size={14} className="mr-1" /> Download images
+                </label>
+              </div>
+              
+              <div className="flex items-center mb-3">
+                <input
+                  type="checkbox"
+                  id="downloadFiles"
+                  name="downloadFiles"
+                  checked={options.downloadFiles}
+                  onChange={handleOptionChange}
+                  className="h-4 w-4 mr-2"
+                />
+                <label htmlFor="downloadFiles" className="text-sm flex items-center">
+                  <FileText size={14} className="mr-1" /> Download other files (PDFs, docs, etc.)
+                </label>
+              </div>
+              
+              <div className="flex flex-col ml-6">
+                <label htmlFor="maxFileSize" className="text-sm mb-1">
+                  Max File Size (MB):
+                </label>
+                <input
+                  type="number"
+                  id="maxFileSize"
+                  name="maxFileSize"
+                  value={options.maxFileSize}
+                  min="1"
+                  max="500"
+                  onChange={handleOptionChange}
+                  className="p-2 border border-gray-300 rounded w-24"
+                  disabled={!options.downloadFiles && !options.downloadImages}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum size for each downloaded file in megabytes
+                </p>
+              </div>
             </div>
 
             <div className="border-b pb-4 mb-4">
