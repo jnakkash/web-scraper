@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Web Scraper</title>
+  <style>
+    /* Simple styling */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      color: #111;
+    }
+    .form-container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    @media (min-width: 768px) {
+      .input-group {
+        flex-direction: row;
+      }
+    }
+    input[type="url"] {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      padding: 12px 24px;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #2563eb;
+    }
+    button:disabled {
+      background-color: #93c5fd;
+      cursor: not-allowed;
+    }
+    .results {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      margin-top: 30px;
+      display: none;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 15px;
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      margin-right: 2px;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      border-bottom: 2px solid #3b82f6;
+      color: #3b82f6;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .content-area {
+      max-height: 500px;
+      overflow: auto;
+      background-color: #f8f8f8;
+      padding: 15px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .error {
+      background-color: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 20px;
+      display: none;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 20px 0;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .copy-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      color: #666;
+      padding: 5px;
+      font-size: 14px;
+    }
+    .relative {
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Simple Web Scraper</h1>
+    <p>Enter a URL to extract its content - HTML will be fetched through a CORS proxy</p>
+    <p><small>Note: This is a simplified version with limited functionality due to browser CORS restrictions</small></p>
+  </header>
+
+  <div class="form-container">
+    <form id="scrape-form">
+      <div class="input-group">
+        <input 
+          type="url" 
+          id="url-input" 
+          placeholder="https://example.com" 
+          required
+        >
+        <button type="submit" id="scrape-button">Scrape</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="error" id="error-message"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Scraping... This may take a few moments</p>
+  </div>
+
+  <div class="results" id="results">
+    <h2>Scraped Content</h2>
+    
+    <div class="tabs">
+      <div class="tab active" data-tab="content">Content</div>
+      <div class="tab" data-tab="html">HTML</div>
+      <div class="tab" data-tab="metadata">Metadata</div>
+    </div>
+
+    <div class="relative">
+      <button id="copy-button" class="copy-button">Copy</button>
+      
+      <div class="tab-content active" id="content-tab">
+        <div class="content-area" id="content-area"></div>
+      </div>
+      
+      <div class="tab-content" id="html-tab">
+        <div class="content-area" id="html-area"></div>
+      </div>
+      
+      <div class="tab-content" id="metadata-tab">
+        <div class="content-area" id="metadata-area"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM elements
+    const form = document.getElementById('scrape-form');
+    const urlInput = document.getElementById('url-input');
+    const scrapeButton = document.getElementById('scrape-button');
+    const errorMessage = document.getElementById('error-message');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const contentArea = document.getElementById('content-area');
+    const htmlArea = document.getElementById('html-area');
+    const metadataArea = document.getElementById('metadata-area');
+    const copyButton = document.getElementById('copy-button');
+    const tabs = document.querySelectorAll('.tab');
+    
+    // Add event listeners
+    form.addEventListener('submit', handleScrape);
+    tabs.forEach(tab => {
+      tab.addEventListener('click', switchTab);
+    });
+    copyButton.addEventListener('click', copyActiveContent);
+    
+    // Currently active tab
+    let activeTab = 'content';
+    
+    // Scrape handling function
+    async function handleScrape(e) {
+      e.preventDefault();
+      
+      const url = urlInput.value;
+      if (!url) return;
+      
+      // Reset and show loading
+      errorMessage.style.display = 'none';
+      results.style.display = 'none';
+      loading.style.display = 'block';
+      scrapeButton.disabled = true;
+      
+      try {
+        // Use a CORS proxy to fetch the URL content
+        // Note: This is for demo purposes only and has limitations
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        
+        const response = await fetch(proxyUrl);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch the URL');
+        }
+        
+        // Get the HTML content
+        const html = data.contents;
+        
+        // Simple text extraction and parsing
+        // This is a simplified version of what our Node.js API would do
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // Extract text and remove extra whitespace
+        const bodyText = doc.body.textContent.replace(/\s+/g, ' ').trim();
+        
+        // Extract basic metadata
+        let title = '';
+        const titleElement = doc.querySelector('title');
+        if (titleElement) {
+          title = titleElement.textContent;
+        }
+        
+        let description = '';
+        const metaDesc = doc.querySelector('meta[name="description"]');
+        if (metaDesc) {
+          description = metaDesc.getAttribute('content');
+        }
+        
+        // Populate the content areas
+        contentArea.textContent = bodyText;
+        htmlArea.textContent = html;
+        
+        const metadata = {
+          title,
+          description,
+          url
+        };
+        
+        metadataArea.textContent = JSON.stringify(metadata, null, 2);
+        
+        // Show results
+        loading.style.display = 'none';
+        results.style.display = 'block';
+      } catch (error) {
+        loading.style.display = 'none';
+        errorMessage.textContent = `Error: ${error.message || 'Something went wrong'}`;
+        errorMessage.style.display = 'block';
+        console.error(error);
+      } finally {
+        scrapeButton.disabled = false;
+      }
+    }
+    
+    // Switch tabs
+    function switchTab(e) {
+      // Update active tab
+      tabs.forEach(tab => tab.classList.remove('active'));
+      e.target.classList.add('active');
+      
+      // Get tab id
+      activeTab = e.target.dataset.tab;
+      
+      // Show correct content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(`${activeTab}-tab`).classList.add('active');
+    }
+    
+    // Copy content
+    function copyActiveContent() {
+      let contentToCopy = '';
+      
+      switch(activeTab) {
+        case 'content':
+          contentToCopy = contentArea.textContent;
+          break;
+        case 'html':
+          contentToCopy = htmlArea.textContent;
+          break;
+        case 'metadata':
+          contentToCopy = metadataArea.textContent;
+          break;
+      }
+      
+      if (contentToCopy) {
+        navigator.clipboard.writeText(contentToCopy)
+          .then(() => {
+            // Show a small temporary message
+            const originalText = copyButton.textContent;
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => {
+              copyButton.textContent = originalText;
+            }, 2000);
+          })
+          .catch(err => {
+            console.error('Failed to copy: ', err);
+          });
+      }
+    }
+  </script>
+</body>
+</html> 
